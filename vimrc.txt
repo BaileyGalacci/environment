@@ -1,0 +1,202 @@
+".vimrc
+
+set nocompatible
+set encoding=utf-8
+set fileformat=unix
+fileformats=unit,dos,mac
+set viminfo="NONE"
+set shortmess+=I
+set ttyfast
+set lazyredraw
+set spalllang=en
+let $LANG='en'
+
+"'const' isn't available until v:version >= 802
+if !exists('g:OS_WINDOWS')
+	let g:OS_WINDOWS='Windows'
+	lockvar! g:OS_WINDOWS
+endif
+if !exists('g:os')
+	if has('win64') || has('win32') || has('win16')
+		let g:os=g:OW_WINDOWS
+		let s:vimdir='/.vimfiles'
+	else
+		let g:os=substitute(system('uname -s'), '\n', '', '')
+		let s:vimdir='/.vim'
+	endif
+	lockvar! g:os
+endif
+
+if has('termguicolors')
+	"this is important to put before 'colorscheme'
+	set termguicolors
+endif
+set background=dark
+
+if has('syntax')
+	syntax on
+	if exists('+cursorlineopt')
+		set cursorlineopt=number
+		set cursorline
+	endif
+	nnoremap <silent> <F8> :set cursorcolumn!<CR>
+endif
+
+if system('lsb_release -rs')[0] ==# '6'
+	silent colorscheme slate
+else
+	silent colorscheme desert
+endif
+function! s:ToggleColorscheme()
+	if g:colors_name !=# 'desert'
+		colorscheme desert
+	else
+		colorscheme slate
+		highligh PreProc guifg=indianred guibg=grey15
+	endif
+endfunction
+nnoremap <silent> <F7> :call <SID>ToggleColorscheme()<CR>
+
+set noerrorbells
+setnovisualbell
+set laststatus=2
+set backspace=indent,start
+set splitbelow
+
+filetype plugin indent on
+set showmode
+set formatoptions+=j
+set number
+set scrolloff=5
+set listchars=eol:$,tab:>-
+
+set tabstop=4
+set shiftwidth=0
+set softtabstop=-1
+set noexpandtab
+set autoindent
+set smarttab
+
+set showmatch
+set matchpairs+=<:>
+set matchtime=2
+
+if has('cmdline_info')
+	set ruler
+	set showcmd
+endif
+
+if has('extra_search')
+	set hlsearch
+	set incsearch
+endif
+
+if has('folding')
+	set foldmethod=syntax
+	nnoremap <Leader><F4> :set foldmethod=syntax<CR>
+	nnoremap <F4> :set foldmethod=manual<CR>
+	set foldcolumn=2
+endif
+
+function! s:ToggleMouseSupport()
+	if &mouse ==# 'a'
+		set mouse=
+	else
+		set mouse=a
+	endif
+endfunction
+if has('mouse')
+	nnoremap <silent> <Leader><F2> :call <SID>ToggleMouseSupport()<CR>
+endif
+
+if has('smartindent')
+	set smartindent
+endif
+
+if has('statusline')
+	set statusline= "Clear any previous content
+	set statusline+=%y\ %f\ %m%r
+	set statusline+=%= "Padding to right side
+	set statusline+=[col\ %c]\ (%l\ of\ %L)\ {%n}
+endif
+
+if has('wildignore')
+	set wildignore+=*~,*.pyc
+	if g:os ==# g:OS_WINDOWS
+		set wildignore+=.git\*,.hg\*,.svn\*,__pycache__\*
+	else
+		set wildignore+=*/.git/*,*/.hg/*,*/.svn*,*/__pycache__/*
+	endif
+endif
+
+if has('wildmenu')
+	set wildmenu
+	set wildmode=longest,list,full
+endif
+
+nnoremap <silent> <F3> :set list!<CR>
+"This will effectively reload the current file.
+nnoremap <silent> <F5> :edit<CR>
+nnoremap <silent> <F6> :set spell!<CR>
+"this one is a wacky script; don't add <Leader> here.
+nnoremap <silent> <C-F10> :source $VIMRUNTIME/syntax/hitest.vim<CR>
+"this command should be visible and take an optional number at the end with a Return.
+nnoremap <C-F11> :set colorcolumn=
+nnoremap <silent> <F12> :set relativenumber!<CR>
+
+"disable getting to Ex-mode(batch mode) interactively
+nnoremap Q <nop>
+nnoremap :Q :quit
+nnoremap :W :write ++ff=unix
+
+nnoremap <Leader><F5> :source $MYVIMRC<CR>
+nnoremap <Leader><F9> :edit $MYVIMRC<CR>
+"make all windows the same size
+nnoremap <Leader>= <C-w>=
+
+let g:netrw_liststyle=3 "tree-view
+nnoremap <Leader>e :Sexplore!<CR>
+
+"shortcut to change the file syntax
+function! s:SetSyntax()
+	call inputsave()
+	let l:sft='set filetype='
+	execute l:sft.input(l:sft, '', 'syntax')
+	call inputrestore()
+endfunction
+nnoremap <Leader>s :call <SID>SetSyntax()<CR>
+
+"center cursor vertically on move; (move the text, not the cursor)
+nnoremap <silent> j jzz
+nnoremap <silent> k kzz
+
+"move to a window in the given direction
+nnoremap <Leader>h <C-w>h
+nnoremap <Leader>j <C-w>j
+nnoremap <Leader>k <C-w>k
+nnoremap <Leader>l <C-w>l
+nnoremap <Leader>c :bdelete<CR>
+nnoremap <Leader>b :buffers<CR>
+nnoremap <silent> <Leader>] :nohlsearch<CR>
+nnoremap <silent> <Leader>/ :let @/=''<CR>
+
+"move to the next/previous buffer in the same window
+nnoremap <C-j> :bprevious<CR>
+nnoremap <C-k> :bnext<CR>
+
+"drag a visual group of lines up or down
+vnoremap J :move '>+1<CR>gv=gv
+vnoremap K :move '>-2<CR>gv=gv
+
+"maintain visual mode after shifting
+vmap < <gv
+vmap > >gv
+
+augroup tmuxsyntax
+	autocmd!
+	autocmd BufNewFile,BufRead *.tmux setfiletype tmux
+augroup END
+
+"make the help window always splitleft when opened
+"autocmd BufAdd *.txt if &buftype ==# 'help' ^V| wincmd H ^V| endif
+"autocmd TerminalWinOpen * wincmd H
