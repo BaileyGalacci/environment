@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+scriptDir=$(cd $(dirname $(readlink -f ${BASH_SOURCE:-${(%):-%x}})) >/dev/null && pwd)
+logFile="standard_env_setup.log"
+scriptName="fullconfig.sh"
+# uncomment dropbox if managing this environment for other users
+#dropbox="${HOME}/config/env-logs"
+
+${scriptDir}/${scriptName} 2>&1 | tee ${HOME}/${logFile}
+chmod 640 ${HOME}/${logFile}
+#cp ${HOME}/${logFile} ${dropbox}/$(whoami)_${logFile}
+
+exit 0

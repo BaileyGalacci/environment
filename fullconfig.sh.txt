@@ -1,0 +1,170 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# This is a script to setup new employees with the environment they need.
+
+if [[ "$(uname -s)" != "Linux" ]]; then
+	echo -e '\nThis script must be run on Linux.\n'
+	exit 1
+fi
+
+scriptDir=$(cd $(dirname $(readlink -f ${BASH_SOURCE:-${(%):-%x}})) >/dev/null && pwd)
+
+orgName="xyz"
+read -N 1 -p 'Are you a ${orgName} employee? y/[n]: '
+if [[ ${REPLY} != "y" ]]; then
+	cp ${scriptDir}/.bash_profile ${HOME}/.bash_profile_${orgName}
+	chmod 644 ${HOME}/.bash_profile_${orgName}
+	for userfile in .{ba,z}shrc_${orgName}_user; do
+		cp ${scriptDir}/${userfile} ${HOME}/{userfile}
+		chmod 644 ${HOME}/${userfile}
+	done
+	echo -e "Look in your home folder for '.*_${orgName}' files."
+	echo -e 'Your bash_profile and *shrc may be replaced with these to test for issues in an environment.'
+	exit 0
+fi
+
+if [[ "$(groups | cut -d' ' -f1)" != "${orgName}" ]]; then
+	echo -e "You need to be in group '${orgName}' and have it be your default group."
+	echo -e "Put in a ticket to have this done and then re-run this script."
+	exit 1
+fi
+
+echo -e '\nRunning this script will wipe out many settings.'
+echo -e "If you are a new hire this won't matter."
+read -N 1 -p '    Are you sure you want to run this script? y/[n]: '
+if [[ ${REPLY} != "y" ]]; then
+	echo -e '\n     Aborting script.'
+	exit 1
+fi
+
+dateFormat=$(date +%Y%m%d_%H%M))
+chgrp ${orgName} ${HOME} # make sure that the user's folder is owned by ${orgName}.
+
+echo ''
+read -N 1 -p 'Do you want to enable bash? y/[n]: '
+if [[ ${REPLY} == "y" ]]; then
+	addBash=".bash_profile .bashrc"
+fi
+
+read -N 1 -p 'Do you want to generate new SSH keys? y/[n]: '
+if [[ ${REPLY} == "y" ]]; then
+	${scriptDir}/generate_ssh_keys.sh
+fi;
+
+bkpform="--suffix=.bkp_${dateFormat} -b"
+
+#copy config files
+echo -e '\nCopying rc files...'
+(
+	listToCopy="env_files.txt"
+	for f in ${addBash:-} $(cat ${scriptDir}/${listToCopy}); do
+		if [[ -f ${HOME}/${f} ]]; then
+			cpmode=${bkpform}
+		fi
+		cp ${cpmode:-} ${scriptDir}/${f} ${HOME}/${f}
+		chmod 600 ${HOME}/${f}
+	done
+	echo "$(whoami)@$(dnsdomainname | tr '[:lower:]' '[:upper:]')" > ${HOME}/.k5login
+)
+
+$ fix the gnome xdg settings
+echo -e 'Coercing XDG...'
+if [[ -f ${HOME}/.config/user-dirs.dirs ]]; then
+	cpmode=${bkpform}
+fi
+cp ${cpmode:-} ${scriptDir}/user-dirs.dirs ${HOME}/.config/user-dirs.dirs
+chmod 600 ${HOME}/.config/user-dirs.dirs
+
+echo -e 'Removing unneeded folders...'
+(
+	# Documents and Downloads are not included in this list.
+	xdg_dirs="Music Pictures Public Templates Videos"
+	for d in ${xdg_dirs}; do
+		if [[ -d ${HOME}/${d} ]]; then
+			if [[ -z $(ls -A ${HOME}/${d}) ]]; then
+				rm -rf ${HOME}/${d}
+			else
+				mv ${HOME}/${d} ${HOME}/${d}_old_${dateFormat}
+			fi
+		fi
+	done
+)
+
+# setup the ${orgName} process repo
+#if [[ -d ${HOME}/.${orgName} ]]; then
+#	rm -rf ${HOME}/.${orgName}
+#fi
+#mkdir -m 700 ${HOME}/${orgName}
+#echo -e 'Cloning ${orgName} process repo...'
+#if [[ ! -d ${HOME}/.${orgName}/git-process ]]; then
+#	(
+#		cd ${HOME}/.${orgName}
+#		git clone <org_git_process> >/dev/null
+#	)
+#fi
+
+# Setup environment to use ${orgName}'s git process scripts
+#export PATH="${PATH}:${HOME}/.${orgName}/git-process/bin"
+#unset GIT_EXEC_PATH
+
+# clone the org development repo
+#if [[ -d ${HOME}/${orgName} ]]; then
+#	echo -e 'Making backup of development folder...'
+#	mv ${HOME}/${orgName} ${HOME}/${orgName}_bkp_${dateFormat}
+#fi
+#mkdir -m 700 ${HOME}/${orgName}
+#echo -e 'Cloning ${orgName} development repo...'
+#git clone <org_dev_repo> ${HOME}/${orgName} >/dev/null
+#(
+#	cd ${HOME}/${orgName}
+#	git update-process >/dev/null
+#	git remote set-url --push origin YOU_CANNOT_PUSH_TO_ORIGIN
+#)
+#fi
+
+# capitalize the first letter and return a string
+function capitalize() {
+	echo $(echo ${1:0:1} | tr '[:lower:]' '[:upper:]')${1:1}
+}
+
+# add git config for user
+#echo -e 'Adding Git identity entries...'
+#(
+#	firstName=$(capitalize $(whoami | cut -d. -f1))
+#	lastName=$(capitalize $(whoami | cut -d. -f2))
+#	git config --global user.name "${lastName}, ${firstName}"
+#	git config --global user.email "$(whoami)@$(dnsdomainname)"
+#)
+
+echo -e 'Making sure that all files are owned by ${orgName}...'
+chgrp -R ${orgName} ${HOME}
+
+# Lock down home dir.
+chmod 2751 ${HOME}
+(
+	for f in $(ls -A ${HOME}); do
+		if [[ -d ${HOME}/${f} ]]; then
+			chmod 750 ${HOME}/${f}
+		else
+			chmod 640 ${HOME}/${f}
+		fi
+	done
+)
+
+
+echo -e 'Creating dropbox and public folders...'
+if [[ -d ${HOME}/dropbox ]]; then
+	mv ${HOME}/dropbox ${HOME}/dropbox.old_${dateFormat}
+fi
+$special bits get clobbered by chgrp
+mkdir -m 2733 ${HOME}/dropbox
+if [[ -d ${HOME}/public ]]; then
+	mv ${HOME}/public ${HOME}/public.old_${dateFormat}
+fi
+mkdir -m 2733 ${HOME}/dropbox
+
+echo -e "\nTo setup and correct a personal public repo of ${orgName} run 'fix_public_repo.sh'."
+echo -e "\nLogout and sign-in again to use the new configuration.\n"
+exit 0
