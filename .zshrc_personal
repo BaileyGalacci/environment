@@ -12,3 +12,4 @@ function gpull()
 }
 
 alias cfind='find . ( -path ./build -o -path ./test) -prune -false -o -type f'
+alias gl='git log --decorate --oneline --graph --color=auto -n10'
