@@ -16,11 +16,48 @@ autoload -Uz add-zsh-hook
 add-zsh-hook -D precmd '*'
 
 function check_notices(){
-  P_PWD='%F{242}'
+
+  local pvar
+  for pvar in $(set | \grep -P '^P_[A-Z]+' | cut -d'=' -f1); do
+    # Clean env for next prompt.
+    unset ${pvar}
+  done
+
+  if [[ -z "${UNCOLOR_PROMPT:-}" ]]; then
+    P_PWD='%F{242}'
+  fi
+
+  if [[ -n "${SUB_SHELL_OF:-}" ]]; then
+    if [[ -z "${UNCOLOR_PROMPT:-}" ]]; then
+      P_SUBSH='%F{208}'
+    fi
+    P_SUBSH="${P_SUBSH:-}{${SUB_SHELL_OF}}"
+  fi
+
+  if [[ -n "$(whence __git_ps1)" ]]; then
+    if [[ -z "${UNCOLOR_PROMPT:-}" ]]; then
+      P_REPO='%F{128}'
+    fi
+    P_REPO="${P_REPO:-}$(__git_ps1 '(%s)')"
+  fi
+
+  if [[ -z "${UNCOLOR_PROMPT:-}" ]]; then
+    P_NETW='%F{196}'
+    P_MACH='%F{034}'
+    P_SEPR='%F{012}'
+    P_INFO='%F{178}'
+    P_RETC='%(?.%{F034}.%F{124})'
+    P_JOBS='%F{130}'
+    P_INIT='%F{130}'
+  fi
 }
+add-zsh-hook -z precmd check_notices
 
 NETWORK=''
 NEWLINE=$'\n'
 
-PROMPT='${NEWLINE}'
-PROMPT+=''
+PROMPT='${NEWLINE}'${P_NETW:-}${NETWORK}'
+PROMPT+=' ${P_INFO:-}[${P_MACH:-}%m${P_SUBSH:-}${P_SEPR:-}:${P_PWD:-}%~${P_INFO:-}]'
+PROMPT+=' ${P_RETC:-}%?${P_JOBS:-}%(1j. jobs=%j.)${P_REPO:-}${NEWLINE}${P_INIT:-}%#%f "
+
+#PROMPT='${NEWLINE}${P_NETW:-}${NETWORK} ${P_INFO:-}[${P_MACH:-}%m${P_SEPR:-}:${P_PWD:-}%~${P_REPO:-}${P_INFO:-}]${P_VENV:-}${P_SUBSH:-}${P_JOBS:-}%(1j. jobs=%j.) ${P_RETC:-)%?${NEWLINE}${P_INIT:-}%# %f'
