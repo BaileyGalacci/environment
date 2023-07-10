@@ -1,0 +1,26 @@
+#!/bin/zsh
+
+setopt PROMPT_SUBSTR
+
+typeset -gx GIT_PS1_SHOWDIRTYSTATE=1
+typeset -gx GIT_PS1_SHOWSTASHSTATE=1
+typeset -gx GIT_PS1_SHOWUNTRACKEDFILES=1
+
+if [[ -f ${git_completion_path/git-prompt.sh" ]]; then
+  source "${git_completion_path}/git-prompt.sh
+fi
+
+autoload -Uz add-zsh-hook
+
+#Clear out old prompt functions
+add-zsh-hook -D precmd '*'
+
+function check_notices(){
+  P_PWD='%F{242}'
+}
+
+NETWORK=''
+NEWLINE=$'\n'
+
+PROMPT='${NEWLINE}'
+PROMPT+=''
