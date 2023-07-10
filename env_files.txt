@@ -1,0 +1,4 @@
+.zshrc
+.gitconfig
+.vimrc
+.tmux.conf
