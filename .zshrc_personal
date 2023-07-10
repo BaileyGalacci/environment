@@ -1,0 +1,14 @@
+if [[ -f "${HOME}/.zshrc_prompt" ]]; then
+  source ${HOME}/.zshrc_prompt
+fi
+
+function gpull()
+{
+  local curBranch;
+  curBranch=$(git branch --show-current);
+  remoteUpstream=$(git rev-parse --abbrev-ref --symbolic-full-name @{u})
+  ru="${remoteUpstream[(ws:/:)1]}"
+  git pull ${ru} ${curBranch}
+}
+
+alias cfind='find . ( -path ./build -o -path ./test) -prune -false -o -type f'
